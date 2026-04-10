@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailScan — Email Finder & Verifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:       #05070f;
+      --surface:  #0d1117;
+      --panel:    #111827;
+      --border:   #1f2937;
+      --accent:   #00e5ff;
+      --accent2:  #7c3aed;
+      --green:    #10b981;
+      --yellow:   #f59e0b;
+      --red:      #ef4444;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --mono:     'Space Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 800px; height: 600px;
+      background: radial-gradient(ellipse, rgba(0,229,255,.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeDown .6s ease both;
+    }
+
+    .logo-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      font-family: var(--mono);
+      font-size: .75rem;
+      letter-spacing: .2em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      padding: .35rem .9rem;
+      border: 1px solid rgba(0,229,255,.25);
+      border-radius: 999px;
+      background: rgba(0,229,255,.05);
+    }
+
+    .logo-mark span { animation: blink 1.4s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -.02em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      margin-bottom: .75rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 300;
+      max-width: 420px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 5px;
+      margin-bottom: 1.5rem;
+      animation: fadeUp .5s .1s ease both;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: .7rem 1rem;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: .9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .25s;
+    }
+
+    .tab-btn.active {
+      background: var(--panel);
+      color: var(--accent);
+      border: 1px solid rgba(0,229,255,.2);
+      box-shadow: 0 0 20px rgba(0,229,255,.08);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      animation: fadeUp .5s .2s ease both;
+    }
+
+    .card.hidden { display: none; }
+
+    .field { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: .75rem;
+      font-family: var(--mono);
+      letter-spacing: .1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: .4rem;
+    }
+
+    input[type="text"], input[type="email"], textarea {
+      width: 100%;
+      padding: .75rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: .95rem;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(0,229,255,.4);
+      box-shadow: 0 0 0 3px rgba(0,229,255,.08);
+    }
+
+    textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media(max-width:500px){ .row-2 { grid-template-columns: 1fr; } }
+
+    .btn {
+      width: 100%;
+      padding: .85rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: .5rem;
+      letter-spacing: .02em;
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+      box-shadow: 0 4px 20px rgba(0,229,255,.15);
+    }
+
+    .btn:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,229,255,.25); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .loader {
+      display: none;
+      align-items: center;
+      gap: .75rem;
+      justify-content: center;
+      padding: 1.5rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: .8rem;
+    }
+
+    .loader.show { display: flex; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result { margin-top: 1.5rem; }
+    .result.hidden { display: none; }
+
+    .score-section {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 1.25rem;
+      background: var(--panel);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    .ring-wrap { flex-shrink: 0; }
+
+    .ring {
+      width: 72px; height: 72px;
+      transform: rotate(-90deg);
+    }
+
+    .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+    .ring-fill { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .8s cubic-bezier(.4,0,.2,1); }
+
+    .score-info h2 {
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: .2rem;
+    }
+
+    .score-info p { font-size: .85rem; color: var(--muted); }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .8rem;
+      font-weight: 600;
+      padding: .3rem .8rem;
+      border-radius: 999px;
+      margin-bottom: .4rem;
+    }
+
+    .badge-valid   { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-risky   { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .badge-invalid { background: rgba(239,68,68,.15);  color: var(--red); }
+    .badge-notfound { background: rgba(100,116,139,.15); color: var(--muted); }
+
+    .checks { display: flex; flex-direction: column; gap: .5rem; }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .7rem 1rem;
+      background: var(--panel);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: .9rem;
+    }
+
+    .check-left { display: flex; align-items: center; gap: .6rem; color: var(--muted); }
+    .check-icon { font-size: 1rem; }
+
+    .pill {
+      font-size: .75rem;
+      font-weight: 600;
+      padding: .2rem .65rem;
+      border-radius: 999px;
+      font-family: var(--mono);
+    }
+
+    .pill-pass    { background: rgba(16,185,129,.15); color: var(--green); }
+    .pill-fail    { background: rgba(239,68,68,.15);  color: var(--red); }
+    .pill-warn    { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .pill-unknown { background: rgba(100,116,139,.15); color: var(--muted); }
+
+    .mx-list {
+      margin-top: .75rem;
+      padding: .75rem 1rem;
+      background: var(--panel);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .mx-list h4 { font-family: var(--mono); font-size: .7rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .5rem; }
+    .mx-list code { display: block; font-size: .8rem; color: var(--accent); font-family: var(--mono); padding: .1rem 0; }
+
+    /* ── Found Email Result Card ── */
+    .found-email-card {
+      padding: 1.5rem;
+      background: rgba(16,185,129,.08);
+      border: 1px solid rgba(16,185,129,.25);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .found-email-card .fe-label {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: .6rem;
+      opacity: .8;
+    }
+
+    .found-email-card .fe-address {
+      font-family: var(--mono);
+      font-size: 1.2rem;
+      color: #fff;
+      word-break: break-all;
+      margin-bottom: 1rem;
+    }
+
+    .found-email-card .copy-big-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .55rem 1.4rem;
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+      font-size: .85rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: opacity .2s;
+    }
+
+    .found-email-card .copy-big-btn:hover { opacity: .85; }
+
+    .not-found-card {
+      padding: 1.5rem;
+      background: rgba(239,68,68,.07);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .not-found-card p { color: var(--muted); font-size: .9rem; line-height: 1.6; }
+    .not-found-card strong { color: var(--text); }
+
+    .catchall-card {
+      padding: 1.5rem;
+      background: rgba(245,158,11,.07);
+      border: 1px solid rgba(245,158,11,.2);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .catchall-card .fe-label {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--yellow);
+      margin-bottom: .6rem;
+    }
+
+    .catchall-card .fe-address {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      color: #fff;
+      word-break: break-all;
+      margin-bottom: .5rem;
+    }
+
+    .catchall-card .fe-note {
+      font-size: .8rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .domain-info {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .75rem 1rem;
+      background: var(--panel);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+      font-size: .85rem;
+    }
+
+    .domain-info strong { font-family: var(--mono); color: var(--accent); }
+
+    .bulk-result-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 1rem;
+      padding: .6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+
+    .bulk-result-row:last-child { border-bottom: none; }
+    .bulk-table { background: var(--panel); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; }
+    .bulk-head { background: var(--border); padding: .5rem 1rem; font-family: var(--mono); font-size: .7rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; }
+
+    .section-title {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+
+    .error-box {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: 1rem;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: 10px;
+      color: var(--red);
+      font-size: .85rem;
+      margin-top: 1rem;
+    }
+
+    .scanning-progress {
+      padding: 1rem;
+      background: var(--panel);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-top: 1rem;
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    .scanning-progress .sp-title {
+      color: var(--accent);
+      margin-bottom: .5rem;
+    }
+
+    .progress-bar-wrap {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: .5rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      transition: width .3s ease;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .anim-in { animation: slideIn .35s ease both; }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: .78rem;
+      font-family: var(--mono);
+      opacity: .6;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo-mark">
+      <span>●</span> MAILSCAN v1.0
+    </div>
+    <h1>Email Finder<br>&amp; Verifier</h1>
+    <p class="subtitle">Validate email addresses instantly with DNS, MX &amp; SMTP checks.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('verify')">✦ Verify Email</button>
+    <button class="tab-btn" onclick="switchTab('find')">⌕ Find Email</button>
+    <button class="tab-btn" onclick="switchTab('bulk')">⊞ Bulk Check</button>
+  </div>
+
+  <!-- ══════════ VERIFY TAB ══════════ -->
+  <div class="card" id="tab-verify">
+    <div class="field">
+      <label>Email Address</label>
+      <input type="email" id="verifyInput" placeholder="e.g. john.doe@company.com"
+             onkeydown="if(event.key==='Enter') runVerify()" />
+    </div>
+    <button class="btn" id="verifyBtn" onclick="runVerify()">▶ Verify Email</button>
+
+    <div class="loader" id="verifyLoader">
+      <div class="spinner"></div> Running checks…
+    </div>
+
+    <div class="result hidden" id="verifyResult"></div>
+  </div>
+
+  <!-- ══════════ FIND TAB ══════════ -->
+  <div class="card hidden" id="tab-find">
+    <div class="row-2">
+      <div class="field">
+        <label>First Name</label>
+        <input type="text" id="findFirst" placeholder="John" />
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input type="text" id="findLast" placeholder="Doe" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Company Domain</label>
+      <input type="text" id="findDomain" placeholder="e.g. company.com"
+             onkeydown="if(event.key==='Enter') runFind()" />
+    </div>
+    <button class="btn" id="findBtn" onclick="runFind()">⌕ Find Email Address</button>
+
+    <div class="loader" id="findLoader">
+      <div class="spinner"></div> Scanning 11 patterns via SMTP…
+    </div>
+
+    <div class="result hidden" id="findResult"></div>
+  </div>
+
+  <!-- ══════════ BULK TAB ══════════ -->
+  <div class="card hidden" id="tab-bulk">
+    <div class="field">
+      <label>Email List (one per line, max 20)</label>
+      <textarea id="bulkInput" placeholder="alice@example.com&#10;bob@company.com&#10;carol@domain.org"></textarea>
+    </div>
+    <button class="btn" id="bulkBtn" onclick="runBulk()">⊞ Bulk Verify</button>
+
+    <div class="loader" id="bulkLoader">
+      <div class="spinner"></div> Verifying all emails…
+    </div>
+
+    <div class="result hidden" id="bulkResult"></div>
+  </div>
+
+  <footer>MailScan · DNS + MX + SMTP Verification</footer>
+</div>
+
+<script>
+  // 🔁 REPLACE with your backend URL
+  const API = "https://backend-of-emailtool.onrender.com";
+
+  // ── Tab switching ────────────────────────────────────────────────────────
+  function switchTab(name) {
+    ["verify","find","bulk"].forEach(t => {
+      document.getElementById(`tab-${t}`).classList.toggle("hidden", t !== name);
+    });
+    document.querySelectorAll(".tab-btn").forEach((b,i) => {
+      b.classList.toggle("active", ["verify","find","bulk"][i] === name);
+    });
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function setLoading(id, on) {
+    document.getElementById(id+"Loader").classList.toggle("show", on);
+    document.getElementById(id+"Btn").disabled = on;
+  }
+
+  function scoreColor(score) {
+    if (score >= 85) return "#10b981";
+    if (score >= 55) return "#f59e0b";
+    return "#ef4444";
+  }
+
+  function statusBadge(code) {
+    const map = {
+      valid:   ["badge-valid",   "✓ Valid"],
+      risky:   ["badge-risky",   "⚠ Risky"],
+      invalid: ["badge-invalid", "✕ Invalid"],
+    };
+    const [cls, txt] = map[code] || map.invalid;
+    return `<span class="status-badge ${cls}">${txt}</span>`;
+  }
+
+  function pillPass(val) {
+    if (val === true)  return `<span class="pill pill-pass">PASS</span>`;
+    if (val === false) return `<span class="pill pill-fail">FAIL</span>`;
+    return `<span class="pill pill-unknown">UNKNOWN</span>`;
+  }
+
+  function ringHTML(score) {
+    const r = 30;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (score / 100) * circ;
+    const col = scoreColor(score);
+    return `
+      <svg class="ring" viewBox="0 0 72 72">
+        <circle class="ring-bg" cx="36" cy="36" r="${r}"/>
+        <circle class="ring-fill" cx="36" cy="36" r="${r}"
+          stroke="${col}"
+          stroke-dasharray="${circ}"
+          stroke-dashoffset="${offset}"/>
+      </svg>`;
+  }
+
+  async function apiFetch(path, body) {
+    const r = await fetch(API + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.error || "Server error");
+    }
+    return r.json();
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id+"Result");
+    el.classList.remove("hidden");
+    el.innerHTML = `<div class="error-box">⚠ ${msg}</div>`;
+  }
+
+  function copyToClipboard(email, btn) {
+    navigator.clipboard.writeText(email).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = "✓ Copied!";
+      setTimeout(() => btn.textContent = orig, 1600);
+    });
+  }
+
+  // ── VERIFY ───────────────────────────────────────────────────────────────
+  async function runVerify() {
+    const email = document.getElementById("verifyInput").value.trim();
+    if (!email) return;
+    setLoading("verify", true);
+    document.getElementById("verifyResult").classList.add("hidden");
+
+    try {
+      const d = await apiFetch("/verify", { email });
+
+      // Backend returns d.checks.format, d.checks.mx, etc.
+      const c = d.checks;
+      const col = scoreColor(d.score);
+
+      let html = `
+        <div class="anim-in">
+          <div class="score-section">
+            <div class="ring-wrap">${ringHTML(d.score)}</div>
+            <div class="score-info">
+              ${statusBadge(d.statusCode)}
+              <h2 style="color:${col}">${d.score}<span style="font-size:.9rem;color:var(--muted)">/100</span></h2>
+              <p style="font-family:var(--mono);font-size:.78rem;">${d.email}</p>
+            </div>
+          </div>
+
+          <p class="section-title">Verification Checks</p>
+          <div class="checks">
+            <div class="check-row">
+              <span class="check-left"><span class="check-icon">📐</span> Format Valid</span>
+              ${pillPass(c.format)}
+            </div>
+            <div class="check-row">
+              <span class="check-left"><span class="check-icon">🗑</span> Disposable Domain</span>
+              <span class="pill ${c.disposable ? 'pill-warn':'pill-pass'}">${c.disposable ? 'DISPOSABLE' : 'CLEAN'}</span>
+            </div>
+            <div class="check-row">
+              <span class="check-left"><span class="check-icon">📡</span> MX Records Found</span>
+              ${pillPass(c.mx)}
+            </div>
+            <div class="check-row">
+              <span class="check-left"><span class="check-icon">🔌</span> SMTP Reachable</span>
+              ${pillPass(c.smtp)}
+            </div>
+          </div>`;
+
+      if (c.mxRecords && c.mxRecords.length) {
+        html += `<div class="mx-list" style="margin-top:.75rem">
+          <h4>MX Records</h4>
+          ${c.mxRecords.map(r => `<code>${r}</code>`).join("")}
+        </div>`;
+      }
+
+      html += `</div>`;
+
+      const el = document.getElementById("verifyResult");
+      el.classList.remove("hidden");
+      el.innerHTML = html;
+    } catch(e) {
+      showError("verify", e.message);
+    } finally {
+      setLoading("verify", false);
+    }
+  }
+
+  // ── FIND ─────────────────────────────────────────────────────────────────
+  async function runFind() {
+    const firstName = document.getElementById("findFirst").value.trim();
+    const lastName  = document.getElementById("findLast").value.trim();
+    const domain    = document.getElementById("findDomain").value.trim();
+    if (!firstName || !lastName || !domain) return;
+
+    setLoading("find", true);
+    document.getElementById("findResult").classList.add("hidden");
+
+    try {
+      const d = await apiFetch("/find", { firstName, lastName, domain });
+
+      let html = `<div class="anim-in">`;
+
+      // Domain MX info bar
+      html += `<div class="domain-info">
+        Domain: <strong>${d.domain}</strong>
+        &nbsp;·&nbsp; MX: ${d.mx
+          ? '<span style="color:var(--green)">✓ Valid</span>'
+          : '<span style="color:var(--red)">✕ No MX</span>'}
+      </div>`;
+
+      if (!d.mx) {
+        // No MX at all
+        html += `<div class="not-found-card">
+          <p>❌ The domain <strong>${d.domain}</strong> has no MX records.<br>
+          Email is not possible on this domain.</p>
+        </div>`;
+
+      } else if (d.found && d.email) {
+        // ✅ Valid email confirmed
+        html += `<div class="found-email-card">
+          <div class="fe-label">✓ Email Address Found</div>
+          <div class="fe-address">${d.email}</div>
+          <button class="copy-big-btn" onclick="copyToClipboard('${d.email}', this)">
+            📋 Copy Email
+          </button>
+        </div>`;
+
+      } else if (d.catchAll && d.bestGuess) {
+        // ⚠ Catch-all server — best guess
+        html += `<div class="catchall-card">
+          <div class="fe-label">⚠ Catch-All Server — Best Guess</div>
+          <div class="fe-address">${d.bestGuess}</div>
+          <div class="fe-note">${d.catchAllNote}</div>
+          <br>
+          <button class="copy-big-btn" style="background:var(--yellow);color:#000"
+            onclick="copyToClipboard('${d.bestGuess}', this)">
+            📋 Copy Best Guess
+          </button>
+        </div>`;
+
+      } else {
+        // Not found
+        html += `<div class="not-found-card">
+          <p>❌ No valid email found for <strong>${firstName} ${lastName}</strong> at <strong>${d.domain}</strong>.<br>
+          All ${d.patterns ? d.patterns.length : 11} common patterns were tested — none were confirmed.</p>
+        </div>`;
+      }
+
+      html += `</div>`;
+
+      const el = document.getElementById("findResult");
+      el.classList.remove("hidden");
+      el.innerHTML = html;
+
+    } catch(e) {
+      showError("find", e.message);
+    } finally {
+      setLoading("find", false);
+    }
+  }
+
+  // ── BULK ──────────────────────────────────────────────────────────────────
+  async function runBulk() {
+    const raw = document.getElementById("bulkInput").value;
+    const emails = raw.split("\n").map(e => e.trim()).filter(Boolean);
+    if (!emails.length) return;
+    if (emails.length > 20) {
+      showError("bulk", "Maximum 20 emails allowed per request.");
+      return;
+    }
+
+    setLoading("bulk", true);
+    document.getElementById("bulkResult").classList.add("hidden");
+
+    try {
+      const d = await apiFetch("/bulk-verify", { emails });
+      const results = d.results;
+
+      const valid   = results.filter(r => r.statusCode === "valid").length;
+      const risky   = results.filter(r => r.statusCode === "risky").length;
+      const invalid = results.filter(r => r.statusCode === "invalid").length;
+
+      let html = `<div class="anim-in">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1rem">
+          <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:.75rem;text-align:center">
+            <div style="font-family:var(--mono);font-size:1.5rem;color:var(--green)">${valid}</div>
+            <div style="font-size:.75rem;color:var(--muted)">Valid</div>
+          </div>
+          <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:.75rem;text-align:center">
+            <div style="font-family:var(--mono);font-size:1.5rem;color:var(--yellow)">${risky}</div>
+            <div style="font-size:.75rem;color:var(--muted)">Risky</div>
+          </div>
+          <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:.75rem;text-align:center">
+            <div style="font-family:var(--mono);font-size:1.5rem;color:var(--red)">${invalid}</div>
+            <div style="font-size:.75rem;color:var(--muted)">Invalid</div>
+          </div>
+        </div>
+
+        <div class="bulk-table">
+          <div class="bulk-head">
+            <span>Email</span><span>Score</span><span>Status</span>
+          </div>`;
+
+      results.forEach(r => {
+        const col = scoreColor(r.score);
+        const st = r.statusCode === "valid" ? "badge-valid" : r.statusCode === "risky" ? "badge-risky" : "badge-invalid";
+        html += `
+          <div class="bulk-result-row">
+            <span style="font-family:var(--mono);font-size:.8rem;word-break:break-all">${r.email}</span>
+            <span style="font-family:var(--mono);color:${col};font-weight:700">${r.score}</span>
+            <span class="status-badge ${st}" style="font-size:.72rem;padding:.15rem .55rem">${r.status}</span>
+          </div>`;
+      });
+
+      html += `</div></div>`;
+
+      const el = document.getElementById("bulkResult");
+      el.classList.remove("hidden");
+      el.innerHTML = html;
+    } catch(e) {
+      showError("bulk", e.message);
+    } finally {
+      setLoading("bulk", false);
+    }
+  }
+</script>
+</body>
+</html>
